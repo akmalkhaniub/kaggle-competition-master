@@ -1,0 +1,20 @@
+# Node.js
+node_modules/
+dist/
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.env
+
+# App specific
+backend/downloads/
+backend/notebooks/
+backend/data/
+
+# OS
+.DS_Store
+Thumbs.db
