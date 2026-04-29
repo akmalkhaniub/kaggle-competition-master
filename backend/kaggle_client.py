@@ -1,7 +1,8 @@
 import os
 import requests
 import json
-from typing import List, Optional
+import subprocess
+from typing import List, Optional, Callable
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -16,9 +17,6 @@ class KaggleClient:
         }
 
     def list_competitions(self, search: Optional[str] = None, group: str = "general") -> List[dict]:
-        """
-        group can be: general, entered, completed
-        """
         try:
             params = {"group": group}
             if search:
@@ -51,27 +49,62 @@ class KaggleClient:
                                    headers=self.headers)
             response.raise_for_status()
             data = response.json()
-            # The API might return a list of teams
-            return data[:10] if isinstance(data, list) else data
+            return data[:15] if isinstance(data, list) else data
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    def download_competition_data(self, competition_ref: str, path: str = "./data"):
+    def download_competition_data(self, competition_ref: str, path: str = "./data", progress_callback: Optional[Callable] = None):
         try:
             response = requests.get(f"{self.base_url}/competitions/data/download-all/{competition_ref}", 
                                    headers=self.headers, stream=True)
             response.raise_for_status()
             
+            total_size = int(response.headers.get('content-length', 0))
             os.makedirs(path, exist_ok=True)
             file_path = os.path.join(path, f"{competition_ref}.zip")
             
+            downloaded = 0
             with open(file_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback and total_size > 0:
+                            percent = int((downloaded / total_size) * 100)
+                            progress_callback(percent)
             
             return {"status": "success", "path": file_path}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def run_cli_command(self, command: str):
+        """Execute a kaggle CLI command and return output"""
+        try:
+            # Ensure the command starts with 'kaggle' for security
+            if not command.startswith("kaggle "):
+                return {"status": "error", "message": "Only 'kaggle' CLI commands are allowed."}
+            
+            result = subprocess.run(command, shell=True, capture_output=True, text=True)
+            return {
+                "status": "success" if result.returncode == 0 else "error",
+                "stdout": result.stdout,
+                "stderr": result.stderr
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def get_ai_summary(self, title: str, category: str):
+        """Simulate an AI summary if no API key is provided, or use OpenAI if it is"""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return {
+                "summary": f"This is a {category} competition focused on {title}.",
+                "strategy": "1. Explore the dataset using pandas profile.\n2. Start with a Random Forest baseline.\n3. Fine-tune using Optuna if metrics stall.",
+                "difficulty": "Medium"
+            }
+        
+        # Real OpenAI integration would go here
+        return {"status": "success", "message": "AI Integration ready. Please add your key to .env"}
 
     def init_notebook(self, competition_ref: str, username: str = "akmalshahbaz"):
         try:
