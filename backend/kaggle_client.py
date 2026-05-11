@@ -94,17 +94,43 @@ class KaggleClient:
             return {"status": "error", "message": str(e)}
 
     def get_ai_summary(self, title: str, category: str):
-        """Simulate an AI summary if no API key is provided, or use OpenAI if it is"""
-        api_key = os.getenv("OPENAI_API_KEY")
+        """Use Gemini to generate a competition strategy"""
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        
         if not api_key:
             return {
-                "summary": f"This is a {category} competition focused on {title}.",
-                "strategy": "1. Explore the dataset using pandas profile.\n2. Start with a Random Forest baseline.\n3. Fine-tune using Optuna if metrics stall.",
-                "difficulty": "Medium"
+                "summary": f"This {category} competition, '{title}', is a great opportunity to apply machine learning. Without an API key, we recommend a standard approach.",
+                "strategy": "1. Perform thorough EDA to understand feature distributions.\n2. Create a robust cross-validation strategy.\n3. Experiment with Gradient Boosting models like XGBoost or LightGBM.\n4. Document your feature engineering experiments.",
+                "difficulty": "Unknown"
             }
         
-        # Real OpenAI integration would go here
-        return {"status": "success", "message": "AI Integration ready. Please add your key to .env"}
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Analyze this Kaggle competition and provide a concise winning strategy:
+            Title: {title}
+            Category: {category}
+            
+            Return the result in JSON format with:
+            - "summary": A 2-sentence overview of the challenge.
+            - "strategy": A numbered list of 3-4 specific technical steps.
+            - "difficulty": One word (Easy, Medium, Hard).
+            """
+            
+            response = model.generate_content(prompt)
+            # Simple cleanup in case of markdown formatting in response
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(text)
+        except Exception as e:
+            print(f"AI Summary Error: {e}")
+            return {
+                "summary": f"Error generating summary for {title}.",
+                "strategy": "Check your API key and connection.",
+                "difficulty": "N/A"
+            }
 
     def init_notebook(self, competition_ref: str, username: str = "akmalshahbaz"):
         try:
