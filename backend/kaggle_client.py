@@ -358,3 +358,74 @@ class KaggleClient:
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def troubleshoot_error(self, competition_ref: str, error_text: str):
+        """Use Gemini to analyze a Kaggle traceback/error and suggest a fix"""
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return {"status": "error", "message": "API key missing"}
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Analyze this Kaggle error/traceback for competition {competition_ref} and provide a diagnosis:
+            
+            Error Log:
+            {error_text}
+            
+            Return JSON with:
+            - "diagnosis": A short explanation of the root cause (e.g. OOM, data mismatch).
+            - "fix": 2-3 specific technical steps to resolve the issue.
+            - "severity": One word (Low, Medium, High).
+            """
+            
+            response = model.generate_content(prompt)
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(text)
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def log_experiment(self, competition_ref: str, data: dict):
+        """Save a local experiment record to data/experiments.json"""
+        try:
+            data_dir = os.path.join(os.getcwd(), "data")
+            os.makedirs(data_dir, exist_ok=True)
+            db_path = os.path.join(data_dir, "experiments.json")
+            
+            experiments = {}
+            if os.path.exists(db_path):
+                with open(db_path, 'r') as f:
+                    experiments = json.load(f)
+            
+            if competition_ref not in experiments:
+                experiments[competition_ref] = []
+            
+            # Add timestamp and ID
+            import datetime
+            data["timestamp"] = datetime.datetime.now().isoformat()
+            data["id"] = len(experiments[competition_ref]) + 1
+            
+            experiments[competition_ref].append(data)
+            
+            with open(db_path, 'w') as f:
+                json.dump(experiments, f, indent=4)
+                
+            return {"status": "success", "data": data}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def get_experiments(self, competition_ref: str):
+        """Fetch all experiments for a competition"""
+        try:
+            db_path = os.path.join(os.getcwd(), "data", "experiments.json")
+            if not os.path.exists(db_path):
+                return []
+            
+            with open(db_path, 'r') as f:
+                experiments = json.load(f)
+                return experiments.get(competition_ref, [])
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

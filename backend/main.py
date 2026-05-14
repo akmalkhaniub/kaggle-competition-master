@@ -110,6 +110,18 @@ async def summarize_discussions(ref: str):
 async def generate_baseline(ref: str, schema: dict):
     return client.generate_baseline_code(ref, schema)
 
+@app.post("/competitions/{ref}/troubleshoot")
+async def troubleshoot_error(ref: str, error_text: str = Query(...)):
+    return client.troubleshoot_error(ref, error_text)
+
+@app.post("/competitions/{ref}/experiments")
+async def log_experiment(ref: str, data: dict):
+    return client.log_experiment(ref, data)
+
+@app.get("/competitions/{ref}/experiments")
+async def get_experiments(ref: str):
+    return client.get_experiments(ref)
+
 @app.post("/competitions/compare")
 async def compare_competitions(comp1: dict, comp2: dict):
     return client.compare_competitions(comp1, comp2)

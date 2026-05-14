@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Loader2, Trophy, Send, Database, BarChart2, MessageSquare } from 'lucide-react';
+import { X, Sparkles, Loader2, Trophy, Send, Database, BarChart2, MessageSquare, Beaker } from 'lucide-react';
 import SubmissionsTab from './SubmissionsTab';
 import DataInsightsTab from './DataInsightsTab';
 import CommunityTab from './CommunityTab';
+import ExperimentLabTab from './ExperimentLabTab';
 
 interface Competition {
   ref: string;
@@ -38,7 +39,7 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
   onDownload,
   downloadProgress
 }) => {
-  const [activeTab, setActiveTab] = useState<'strategy' | 'leaderboard' | 'submissions' | 'data' | 'community'>('strategy');
+  const [activeTab, setActiveTab] = useState<'strategy' | 'leaderboard' | 'submissions' | 'data' | 'community' | 'lab'>('strategy');
 
   if (!selectedComp) return null;
 
@@ -48,6 +49,7 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
     { id: 'submissions', label: 'My Submissions', icon: <Send size={16} /> },
     { id: 'data', label: 'Data Insights', icon: <Database size={16} /> },
     { id: 'community', label: 'Community Wisdom', icon: <MessageSquare size={16} /> },
+    { id: 'lab', label: 'Experiment Lab', icon: <Beaker size={16} /> },
   ];
 
   return (
@@ -241,6 +243,17 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <CommunityTab competitionRef={selectedComp.ref} />
+                </motion.div>
+              )}
+
+              {activeTab === 'lab' && (
+                <motion.div
+                  key="lab"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <ExperimentLabTab competitionRef={selectedComp.ref} />
                 </motion.div>
               )}
             </AnimatePresence>

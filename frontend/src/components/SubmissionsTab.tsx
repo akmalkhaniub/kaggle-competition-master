@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, MessageSquare, Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Upload, MessageSquare, Loader2, CheckCircle2, XCircle, Clock, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Submission {
@@ -164,9 +164,34 @@ const SubmissionsTab: React.FC<SubmissionsTabProps> = ({ competitionRef }) => {
                       {s.description || 'No description'}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-[#20beff] uppercase tracking-tighter">Public Score</p>
-                    <p className="text-sm font-black text-slate-900">{s.publicScore || '—'}</p>
+                  <div className="text-right flex items-center gap-6">
+                    <div>
+                      <p className="text-[10px] font-black text-[#20beff] uppercase tracking-tighter">Public Score</p>
+                      <p className="text-sm font-black text-slate-900">{s.publicScore || '—'}</p>
+                    </div>
+                    {s.status.toLowerCase() === 'error' && (
+                      <button 
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          toast.loading('Analyzing Error...', { id: `trouble-${s.ref}` });
+                          try {
+                            const response = await fetch(`/api/competitions/${competitionRef}/troubleshoot?error_text=${encodeURIComponent(s.description || 'Submission Error')}`, {
+                              method: 'POST'
+                            });
+                            const data = await response.json();
+                            toast.dismiss(`trouble-${s.ref}`);
+                            // Show diagnosis in a more prominent way
+                            alert(`AI Diagnosis: ${data.diagnosis}\n\nSuggested Fix:\n${data.fix.join('\n')}`);
+                          } catch (err) {
+                            toast.error('Troubleshooting failed', { id: `trouble-${s.ref}` });
+                          }
+                        }}
+                        className="p-2.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all active:scale-95"
+                        title="AI Troubleshooting"
+                      >
+                        <Zap size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
