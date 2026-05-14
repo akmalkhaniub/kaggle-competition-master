@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Loader2, Trophy, Send, Database, BarChart2 } from 'lucide-react';
+import { X, Sparkles, Loader2, Trophy, Send, Database, BarChart2, MessageSquare } from 'lucide-react';
 import SubmissionsTab from './SubmissionsTab';
 import DataInsightsTab from './DataInsightsTab';
+import CommunityTab from './CommunityTab';
 
 interface Competition {
   ref: string;
@@ -37,7 +38,7 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
   onDownload,
   downloadProgress
 }) => {
-  const [activeTab, setActiveTab] = useState<'strategy' | 'leaderboard' | 'submissions' | 'data'>('strategy');
+  const [activeTab, setActiveTab] = useState<'strategy' | 'leaderboard' | 'submissions' | 'data' | 'community'>('strategy');
 
   if (!selectedComp) return null;
 
@@ -46,6 +47,7 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
     { id: 'leaderboard', label: 'Standings', icon: <Trophy size={16} /> },
     { id: 'submissions', label: 'My Submissions', icon: <Send size={16} /> },
     { id: 'data', label: 'Data Insights', icon: <Database size={16} /> },
+    { id: 'community', label: 'Community Wisdom', icon: <MessageSquare size={16} /> },
   ];
 
   return (
@@ -228,6 +230,17 @@ const CompetitionModal: React.FC<CompetitionModalProps> = ({
                     onDownload={onDownload}
                     downloadProgress={downloadProgress}
                   />
+                </motion.div>
+              )}
+
+              {activeTab === 'community' && (
+                <motion.div
+                  key="community"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <CommunityTab competitionRef={selectedComp.ref} />
                 </motion.div>
               )}
             </AnimatePresence>

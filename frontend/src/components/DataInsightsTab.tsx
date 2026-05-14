@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Database, AlertTriangle, Target, BarChart3, Loader2, Sparkles, Download } from 'lucide-react';
+import { Database, AlertTriangle, Target, BarChart3, Loader2, Sparkles, Download, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DataInsights {
@@ -111,11 +111,36 @@ const DataInsightsTab: React.FC<DataInsightsTabProps> = ({
           </div>
 
           {/* Key Features */}
-          <div className="bg-slate-900 p-8 rounded-[2rem] text-white">
+          <div className="bg-slate-900 p-8 rounded-[2rem] text-white relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8">
+               <button 
+                onClick={async () => {
+                  toast.loading('Generating Baseline Code...', { id: 'baseline' });
+                  try {
+                    const response = await fetch(`/api/competitions/${competitionRef}/generate-baseline`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ schema: insights })
+                    });
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                      toast.success('baseline.py generated in notebooks/', { id: 'baseline' });
+                    } else {
+                      toast.error(data.message, { id: 'baseline' });
+                    }
+                  } catch (e) {
+                    toast.error('Connection failed', { id: 'baseline' });
+                  }
+                }}
+                className="bg-[#20beff] hover:bg-[#00a6e6] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+               >
+                 <Zap size={14} /> Generate Baseline
+               </button>
+            </div>
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
               <BarChart3 size={14} /> Strategic Feature Importance
             </h4>
-            <div className="space-y-4">
+            <div className="space-y-4 max-w-lg">
                {insights.features.map((feature, i) => (
                  <div key={i} className="flex items-start gap-4 bg-white/5 p-4 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
                    <span className="text-[#20beff] font-black text-xs">0{i+1}</span>

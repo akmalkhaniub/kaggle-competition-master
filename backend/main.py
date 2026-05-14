@@ -102,6 +102,14 @@ async def push_kernel(ref: str):
 async def analyze_dataset(ref: str):
     return client.analyze_dataset(ref)
 
+@app.get("/competitions/{ref}/discussions/summary")
+async def summarize_discussions(ref: str):
+    return client.summarize_discussions(ref)
+
+@app.post("/competitions/{ref}/generate-baseline")
+async def generate_baseline(ref: str, schema: dict):
+    return client.generate_baseline_code(ref, schema)
+
 @app.post("/competitions/compare")
 async def compare_competitions(comp1: dict, comp2: dict):
     return client.compare_competitions(comp1, comp2)

@@ -282,3 +282,79 @@ class KaggleClient:
             return json.loads(text)
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def summarize_discussions(self, competition_ref: str):
+        """Fetch top discussion topics and summarize them using Gemini"""
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return {"status": "error", "message": "API key missing"}
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Generate a 'Community Wisdom' summary for the Kaggle competition: {competition_ref}.
+            Based on the category and nature of this competition, identify:
+            1. 'Gold Nuggets': 3 specific technical tricks often discussed for this type of challenge.
+            2. 'Common Pitfalls': 2 mistakes that often drop people on the leaderboard.
+            3. 'Winning Stack': Recommended libraries and architectures.
+            
+            Return JSON with:
+            - "nuggets": List of objects with "title" and "description".
+            - "pitfalls": List of strings.
+            - "stack": List of strings.
+            """
+            
+            response = model.generate_content(prompt)
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(text)
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def generate_baseline_code(self, competition_ref: str, schema_context: dict):
+        """Generate a professional baseline Python script using Gemini based on the dataset schema"""
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return {"status": "error", "message": "API key missing"}
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Write a professional, high-performance Kaggle baseline script for: {competition_ref}.
+            
+            Dataset Context:
+            {json.dumps(schema_context)}
+            
+            The script should include:
+            1. Data loading (assuming files are in ./data/{competition_ref}/extracted/)
+            2. Basic feature engineering (handling missing values, encoding).
+            3. A robust Cross-Validation loop (StratifiedKFold if applicable).
+            4. A model (use LightGBM, XGBoost, or CatBoost).
+            5. Generation of a submission.csv.
+            
+            Return ONLY the Python code, no markdown formatting or extra text.
+            """
+            
+            response = model.generate_content(prompt)
+            code = response.text.replace('```python', '').replace('```', '').strip()
+            
+            # Save the code to a file
+            notebook_dir = os.path.join(os.getcwd(), "notebooks", competition_ref)
+            os.makedirs(notebook_dir, exist_ok=True)
+            baseline_path = os.path.join(notebook_dir, "baseline.py")
+            
+            with open(baseline_path, 'w') as f:
+                f.write(code)
+                
+            return {
+                "status": "success",
+                "code": code,
+                "path": baseline_path
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
