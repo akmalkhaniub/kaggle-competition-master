@@ -160,3 +160,125 @@ class KaggleClient:
             return {"status": "success", "path": notebook_dir}
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def get_submissions(self, competition_ref: str):
+        """Fetch list of user submissions for a competition"""
+        try:
+            response = requests.get(f"{self.base_url}/competitions/submissions/list/{competition_ref}", 
+                                   headers=self.headers)
+            response.raise_for_status()
+            data = response.json()
+            return [
+                {
+                    "ref": s.get("ref"),
+                    "totalBytes": s.get("totalBytes"),
+                    "date": s.get("date"),
+                    "description": s.get("description"),
+                    "status": s.get("status"),
+                    "publicScore": s.get("publicScore"),
+                    "privateScore": s.get("privateScore")
+                }
+                for s in data
+            ]
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def submit_result(self, competition_ref: str, file_path: str, message: str):
+        """Submit a CSV file to a competition"""
+        command = f'kaggle competitions submit -c {competition_ref} -f "{file_path}" -m "{message}"'
+        return self.run_cli_command(command)
+
+    def push_kernel(self, competition_ref: str):
+        """Push a local notebook to Kaggle Kernels"""
+        notebook_dir = os.path.join(os.getcwd(), "notebooks", competition_ref)
+        if not os.path.exists(notebook_dir):
+            return {"status": "error", "message": f"Notebook directory not found: {notebook_dir}"}
+        
+        command = f'kaggle kernels push -p "{notebook_dir}"'
+        return self.run_cli_command(command)
+
+    def analyze_dataset(self, competition_ref: str):
+        """Unzip downloaded data and use Gemini to provide EDA insights"""
+        download_path = os.path.join(os.getcwd(), "downloads", competition_ref)
+        zip_file = os.path.join(download_path, f"{competition_ref}.zip")
+        
+        if not os.path.exists(zip_file):
+            return {"status": "error", "message": "Dataset not downloaded. Please download first."}
+        
+        try:
+            import zipfile
+            import pandas as pd
+            
+            # Extract basic info from the zip
+            extract_to = os.path.join(download_path, "extracted")
+            os.makedirs(extract_to, exist_ok=True)
+            
+            data_context = []
+            with zipfile.ZipFile(zip_file, 'r') as z:
+                # Only look at the first 3 files to keep it fast
+                files = [f for f in z.namelist() if f.endswith('.csv')][:3]
+                for file_name in files:
+                    z.extract(file_name, extract_to)
+                    df = pd.read_csv(os.path.join(extract_to, file_name), nrows=5)
+                    data_context.append({
+                        "filename": file_name,
+                        "columns": list(df.columns),
+                        "sample": df.to_dict(orient='records')
+                    })
+            
+            # Now prompt Gemini
+            api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                return {"status": "error", "message": "API key missing for AI analysis"}
+
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Analyze this Kaggle dataset structure and provide technical insights for a competition:
+            Competition: {competition_ref}
+            Files and sample data: {json.dumps(data_context)}
+            
+            Return JSON with:
+            - "overview": General data quality and size assessment.
+            - "features": List of 3 key features and why they matter.
+            - "risks": Potential pitfalls (e.g. leakage, missing values).
+            - "target": Identified target variable and its nature.
+            """
+            
+            response = model.generate_content(prompt)
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(text)
+            
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def compare_competitions(self, comp1: dict, comp2: dict):
+        """Use Gemini to compare two competitions and recommend one"""
+        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return {"status": "error", "message": "API key missing"}
+
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Compare these two Kaggle competitions and recommend the best one for a developer:
+            
+            Comp 1: {json.dumps(comp1)}
+            Comp 2: {json.dumps(comp2)}
+            
+            Return JSON with:
+            - "winner": The title of the recommended competition.
+            - "reason": A short reason for the recommendation.
+            - "comparison": A list of objects with "label", "val1", and "val2" comparing metrics like prize, difficulty, and type.
+            """
+            
+            response = model.generate_content(prompt)
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            return json.loads(text)
+        except Exception as e:
+            return {"status": "error", "message": str(e)}

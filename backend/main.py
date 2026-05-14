@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from kaggle_client import KaggleClient
 import os
@@ -75,6 +75,36 @@ async def download_data(ref: str):
 @app.post("/competitions/{ref}/init-notebook")
 async def init_notebook(ref: str):
     return client.init_notebook(ref)
+
+@app.get("/competitions/{ref}/submissions")
+async def get_submissions(ref: str):
+    return client.get_submissions(ref)
+
+@app.post("/competitions/{ref}/submit")
+async def submit_result(ref: str, message: str = Query(...), file: UploadFile = File(...)):
+    # Save uploaded file temporarily
+    temp_path = os.path.join(os.getcwd(), "temp_submissions", file.filename)
+    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+    with open(temp_path, "wb") as f:
+        f.write(await file.read())
+    
+    result = client.submit_result(ref, temp_path, message)
+    # Clean up
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+    return result
+
+@app.post("/competitions/{ref}/push-kernel")
+async def push_kernel(ref: str):
+    return client.push_kernel(ref)
+
+@app.post("/competitions/{ref}/analyze")
+async def analyze_dataset(ref: str):
+    return client.analyze_dataset(ref)
+
+@app.post("/competitions/compare")
+async def compare_competitions(comp1: dict, comp2: dict):
+    return client.compare_competitions(comp1, comp2)
 
 @app.post("/cli/execute")
 async def execute_cli(command: str = Query(...)):

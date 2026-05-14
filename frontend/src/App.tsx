@@ -11,6 +11,7 @@ import CompetitionCard from './components/CompetitionCard';
 import CompetitionModal from './components/CompetitionModal';
 import Terminal from './components/Terminal';
 import CompetitionStats from './components/CompetitionStats';
+import ComparisonOverlay from './components/ComparisonOverlay';
 
 interface Competition {
   ref: string;
@@ -43,6 +44,7 @@ const App: React.FC = () => {
   const [cliOutput, setCliOutput] = useState('');
   const [aiSummary, setAiSummary] = useState<any>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   // WebSocket for Progress
   useEffect(() => {
@@ -115,6 +117,22 @@ const App: React.FC = () => {
     }
   };
 
+  const handlePushKernel = async (ref: string) => {
+    const slug = ref.split('/').pop() || ref;
+    toast.loading('Pushing kernel...', { id: `push-${slug}` });
+    try {
+      const response = await fetch(`/api/competitions/${slug}/push-kernel`, { method: 'POST' });
+      const result = await response.json();
+      if (result.status === 'success') {
+        toast.success('Kernel pushed successfully', { id: `push-${slug}` });
+      } else {
+        toast.error(result.message || 'Push failed', { id: `push-${slug}` });
+      }
+    } catch (error) {
+      toast.error('Connection failed', { id: `push-${slug}` });
+    }
+  };
+
   const fetchLeaderboard = async (ref: string) => {
     setLoadingLeaderboard(true);
     try {
@@ -139,6 +157,19 @@ const App: React.FC = () => {
     } finally {
       setLoadingAi(false);
     }
+  };
+
+  const handleToggleCompare = (ref: string) => {
+    setSelectedForCompare(prev => {
+      if (prev.includes(ref)) {
+        return prev.filter(r => r !== ref);
+      }
+      if (prev.length >= 2) {
+        toast.error('You can only compare 2 competitions at once');
+        return prev;
+      }
+      return [...prev, ref];
+    });
   };
 
   const openCompetitionDetails = (comp: Competition) => {
@@ -233,6 +264,9 @@ const App: React.FC = () => {
                           onOpenDetails={openCompetitionDetails}
                           onDownload={handleDownload}
                           onInitNotebook={handleInitNotebook}
+                          onPushKernel={handlePushKernel}
+                          onToggleCompare={handleToggleCompare}
+                          isSelectedForCompare={selectedForCompare.includes(comp.ref)}
                           downloadProgress={downloadProgress[comp.ref]}
                         />
                       ))
@@ -265,6 +299,14 @@ const App: React.FC = () => {
         loadingAi={loadingAi}
         leaderboard={leaderboard}
         loadingLeaderboard={loadingLeaderboard}
+        onDownload={handleDownload}
+        downloadProgress={selectedComp ? downloadProgress[selectedComp.ref] : undefined}
+      />
+
+      <ComparisonOverlay 
+        selectedComps={competitions.filter(c => selectedForCompare.includes(c.ref))}
+        onClose={() => setSelectedForCompare([])}
+        onClear={() => setSelectedForCompare([])}
       />
     </div>
   );

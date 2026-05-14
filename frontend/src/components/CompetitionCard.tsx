@@ -17,6 +17,9 @@ interface CompetitionCardProps {
   onOpenDetails: (comp: Competition) => void;
   onDownload: (ref: string) => void;
   onInitNotebook: (ref: string) => void;
+  onPushKernel: (ref: string) => void;
+  onToggleCompare: (ref: string) => void;
+  isSelectedForCompare?: boolean;
   downloadProgress?: number;
 }
 
@@ -25,6 +28,9 @@ const CompetitionCard: React.FC<CompetitionCardProps> = ({
   onOpenDetails, 
   onDownload, 
   onInitNotebook,
+  onPushKernel,
+  onToggleCompare,
+  isSelectedForCompare,
   downloadProgress 
 }) => {
   return (
@@ -33,6 +39,18 @@ const CompetitionCard: React.FC<CompetitionCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-[2.5rem] border border-slate-200/60 p-8 hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative"
     >
+      <div className="absolute top-6 left-6 z-10 flex items-center gap-2">
+        <input 
+          type="checkbox" 
+          checked={isSelectedForCompare}
+          onChange={() => onToggleCompare(comp.ref)}
+          className="w-5 h-5 rounded-lg border-2 border-slate-200 text-[#20beff] focus:ring-[#20beff] transition-all cursor-pointer"
+        />
+        {isSelectedForCompare && (
+          <span className="text-[10px] font-black text-[#20beff] uppercase tracking-widest bg-blue-50 px-2 py-1 rounded-md border border-blue-100">Compare</span>
+        )}
+      </div>
+
       {downloadProgress !== undefined && downloadProgress < 100 && (
         <div className="absolute inset-x-0 top-0 h-1 bg-slate-100 overflow-hidden rounded-t-[2.5rem]">
           <div 
@@ -66,9 +84,17 @@ const CompetitionCard: React.FC<CompetitionCardProps> = ({
         </button>
         <button 
           onClick={() => onInitNotebook(comp.ref)}
-          className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 py-3.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 border border-slate-100 active:scale-95"
+          className="bg-slate-50 hover:bg-slate-100 text-slate-600 py-3.5 px-4 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 border border-slate-100 active:scale-95"
+          title="Initialize Notebook"
         >
-          <BookOpen size={14} /> Start
+          <BookOpen size={14} />
+        </button>
+        <button 
+          onClick={() => onPushKernel(comp.ref)}
+          className="bg-slate-900 hover:bg-slate-800 text-white py-3.5 px-4 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+          title="Push to Kaggle"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19l-5-5-5 5M12 14V3"/></svg>
         </button>
       </div>
     </motion.div>
